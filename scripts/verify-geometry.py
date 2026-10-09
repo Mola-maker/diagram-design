@@ -120,6 +120,22 @@ ANY_TAG_RE = re.compile(
     re.IGNORECASE,
 )
 
+COMMENT_RE = re.compile(r"<!--.*?-->|<!--.*", re.DOTALL)
+
+
+def blank_comments(source: str) -> str:
+    """Blank out HTML comments, preserving length and line numbers.
+
+    Comment text is not markup: a tag mentioned inside a comment must not
+    open or close a container for any scan. The shipped template explains
+    its optional `<pattern>` inside a comment; counting that mention as a
+    real opening tag would leave the definition span (and the connector
+    stack) open to the end of the file and silently disable both checks
+    for every diagram built from the template.
+    """
+
+    return COMMENT_RE.sub(lambda match: re.sub(r"[^\n]", " ", match.group(0)), source)
+
 
 def definition_spans(source: str) -> list[tuple[int, int]]:
     """Source intervals covered by a definition-only container.
@@ -150,6 +166,7 @@ def definition_spans(source: str) -> list[tuple[int, int]]:
 
 
 def parse_rects(source: str) -> list[Rect]:
+    source = blank_comments(source)
     spans = definition_spans(source)
     rects: list[Rect] = []
     for match in RECT_RE.finditer(source):
@@ -395,6 +412,7 @@ def shapes(source: str):
     contents are not painted where they are defined.
     """
 
+    source = blank_comments(source)
     stack: list[Offset | None] = []
     for match in TAG_RE.finditer(source):
         tag, attrs = match.group("tag").lower(), match.group("attrs")

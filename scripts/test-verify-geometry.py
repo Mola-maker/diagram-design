@@ -165,6 +165,35 @@ def main() -> int:
         document('<defs><rect x="240" y="80" width="48" height="12" rx="2"/></defs>' + node),
         0,
     )
+    # A tag mentioned inside a comment is not markup. The shipped template
+    # explains its optional <pattern> in a comment inside <defs>; counting
+    # that mention as an opening tag would leave the definition span open
+    # to the end of the file and disable the check for everything after it.
+    check(
+        "comment mentioning a pattern tag does not disable later checks",
+        document(
+            "<!-- OPTIONAL: dot-pattern background. Uncomment the <pattern> "
+            "and the second <rect> below for the dotted paper look. -->"
+            '<defs><pattern id="dots" width="22" height="22">'
+            '<circle cx="1" cy="1" r="1"/></pattern></defs>'
+            '<rect x="240" y="80" width="48" height="12" rx="2" fill="#f5f5f5"/>'
+            + node
+        ),
+        1,
+    )
+    # A closing tag inside a comment does not close a real container either:
+    # the prototype stays a definition and still does not clip.
+    check(
+        "commented closing tag does not end a definition early",
+        document(
+            '<rect x="50" y="80" width="80" height="12" rx="2" fill="#f5f5f5"/>'
+            "<defs><!-- </defs> -->"
+            '<rect x="100" y="70" width="100" height="60" rx="6" fill="#fff"/>'
+            "</defs>"
+        ),
+        0,
+    )
+
     # An ordinary painted group is not a definition: its node still clips.
     check(
         "node inside a painted group still clips a mask",
